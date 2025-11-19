@@ -15,18 +15,15 @@ html, body {
     overflow: hidden;
 }
 
-/* Full-screen wrapper */
+/* Wrapper full screen */
 #wrap {
     position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+    inset: 0;
     background: black;
+    overflow: hidden;
 }
 
-/* The cropped LX area */
+/* Crop */
 #video-container {
     position: absolute;
     width: 325px;
@@ -36,7 +33,7 @@ html, body {
     transform-origin: top left;
 }
 
-/* Iframe (keep your offsets) */
+/* Iframe crop */
 #video {
     position: absolute;
     top: -155px;
@@ -45,35 +42,118 @@ html, body {
     height: 800px;
     border: none;
 }
+
+/* URL input bar */
+#url-bar {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    display: flex;
+    gap: 8px;
+    z-index: 9999;
+}
+
+/* QR button left */
+#qrBtn {
+    padding: 0 12px;
+    font-size: 20px;
+    border-radius: 10px;
+    border: none;
+    background: #333;
+    color: #fff;
+}
+
+/* URL input */
+#url {
+    flex: 1;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: none;
+}
+
+/* Go button right */
+#goBtn {
+    padding: 12px 18px;
+    font-size: 16px;
+    background: #4CAF50;
+    border: none;
+    border-radius: 10px;
+    color: white;
+}
+
+/* QR overlay */
+#qr-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: none; /* hidden by default */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+/* Video preview */
+#qr-video {
+    width: 80vw;
+    max-width: 400px;
+    border-radius: 16px;
+    background: #000;
+}
+
+/* Cancel button */
+#qr-cancel {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: none;
+    background: #555;
+    color: white;
+}
 </style>
 </head>
 <body>
 
+<!-- URL Input Bar -->
+<div id="url-bar">
+    <button id="qrBtn">📷</button>
+    <input id="url" type="text" value="https://vdo.ninja/?view=">
+    <button id="goBtn">Enter</button>
+</div>
+
+<!-- QR Scanner Overlay -->
+<div id="qr-overlay">
+    <video id="qr-video" autoplay playsinline></video>
+    <button id="qr-cancel">Cancel</button>
+</div>
+
+<!-- Hidden canvas for QR decoding -->
+<canvas id="qr-canvas" style="display:none;"></canvas>
+
 <div id="wrap">
     <div id="video-container">
-        <iframe id="video"
-                src="https://vdo.ninja/?view=Pp3zQwa"
-                allow="camera; microphone"
-                allowfullscreen></iframe>
+        <iframe id="video" src="" allow="camera; microphone" allowfullscreen></iframe>
     </div>
 </div>
 
+<!-- QR decoding library -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
 <script>
-/*
- * NEW: Independent X and Y scaling
- * This makes it fill FULL height AND full width
- * without cropping anything.
- */
+/* === SCALE FUNCTION (same stretch as you liked) === */
 function scaleToScreen() {
     const c = document.getElementById("video-container");
 
     const cropW = 325;
     const cropH = 515;
 
-    const scaleX = window.innerWidth  / cropW;   // fill width
-    const scaleY = window.innerHeight / cropH;   // fill height
+    const scaleX = window.innerWidth  / cropW;
+    const scaleY = window.innerHeight / cropH;
 
-    // Center if needed (keeps your current layout perfect)
     const offsetX = (window.innerWidth  - cropW * scaleX) / 2;
     const offsetY = (window.innerHeight - cropH * scaleY) / 2;
 
@@ -83,6 +163,102 @@ function scaleToScreen() {
 
 window.onload = scaleToScreen;
 window.onresize = scaleToScreen;
+
+/* === LOAD STREAM (manual) === */
+function loadStream(url) {
+    document.getElementById("video").src = url;
+    document.getElementById("url-bar").style.display = "none";
+}
+
+document.getElementById("goBtn").onclick = () => {
+    const url = document.getElementById("url").value.trim();
+    if (!url.startsWith("http")) {
+        alert("Please enter a valid URL");
+        return;
+    }
+    loadStream(url);
+};
+
+/* === QR SCANNER LOGIC === */
+const qrBtn     = document.getElementById("qrBtn");
+const qrOverlay = document.getElementById("qr-overlay");
+const qrVideo   = document.getElementById("qr-video");
+const qrCanvas  = document.getElementById("qr-canvas");
+const qrCancel  = document.getElementById("qr-cancel");
+
+let qrStream = null;
+let qrScanActive = false;
+
+function stopQrScanner() {
+    qrScanActive = false;
+    qrOverlay.style.display = "none";
+    if (qrStream) {
+        qrStream.getTracks().forEach(t => t.stop());
+        qrStream = null;
+    }
+}
+
+function startQrScanner() {
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+    }).then(stream => {
+        qrStream = stream;
+        qrVideo.srcObject = stream;
+        qrOverlay.style.display = "flex";
+        qrScanActive = true;
+        qrVideo.play();
+        requestAnimationFrame(tickScan);
+    }).catch(err => {
+        console.error(err);
+        alert("Camera access failed. Check permissions.");
+    });
+}
+
+function tickScan() {
+    if (!qrScanActive) return;
+
+    if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+        const w = qrVideo.videoWidth;
+        const h = qrVideo.videoHeight;
+
+        if (w && h) {
+            qrCanvas.width = w;
+            qrCanvas.height = h;
+            const ctx = qrCanvas.getContext("2d");
+            ctx.drawImage(qrVideo, 0, 0, w, h);
+
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const code = jsQR(imageData.data, w, h);
+
+            if (code && code.data) {
+                // Got QR code data
+                const text = code.data.trim();
+                document.getElementById("url").value = text;
+                stopQrScanner();
+                // Auto-load stream
+                if (text.startsWith("http")) {
+                    loadStream(text);
+                } else {
+                    alert("QR code is not a valid URL.");
+                }
+                return;
+            }
+        }
+    }
+    requestAnimationFrame(tickScan);
+}
+
+qrBtn.onclick = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Camera API not supported on this device/browser.");
+        return;
+    }
+    startQrScanner();
+};
+
+qrCancel.onclick = () => {
+    stopQrScanner();
+};
 </script>
 
 </body>
