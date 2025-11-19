@@ -33,7 +33,6 @@ html, body {
     transform-origin: top left;
 }
 
-/* Iframe crop */
 #video {
     position: absolute;
     top: -155px;
@@ -43,60 +42,66 @@ html, body {
     border: none;
 }
 
-/* URL input bar */
+/* Centered startup UI */
 #url-bar {
     position: fixed;
-    top: 10px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
+    width: 85%;
+    transform: translate(-50%, -50%);
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 12px;
     z-index: 9999;
+    text-align: center;
 }
 
-/* QR button left */
+/* First row: QR + input */
+#row1 {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
 #qrBtn {
-    padding: 0 12px;
-    font-size: 20px;
+    padding: 0 14px;
+    font-size: 22px;
     border-radius: 10px;
     border: none;
     background: #333;
-    color: #fff;
+    color: white;
 }
 
-/* URL input */
 #url {
     flex: 1;
-    padding: 12px;
-    font-size: 16px;
+    padding: 14px;
+    font-size: 17px;
     border-radius: 10px;
     border: none;
 }
 
-/* Go button right */
+/* Enter button centered below */
 #goBtn {
-    padding: 12px 18px;
-    font-size: 16px;
+    padding: 14px;
+    font-size: 17px;
     background: #4CAF50;
     border: none;
     border-radius: 10px;
     color: white;
 }
 
-/* QR overlay */
+/* QR scanner overlay */
 #qr-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.9);
-    display: none; /* hidden by default */
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 10000;
 }
 
-/* Video preview */
 #qr-video {
     width: 80vw;
     max-width: 400px;
@@ -104,7 +109,6 @@ html, body {
     background: #000;
 }
 
-/* Cancel button */
 #qr-cancel {
     margin-top: 20px;
     padding: 10px 20px;
@@ -114,24 +118,26 @@ html, body {
     background: #555;
     color: white;
 }
+
 </style>
 </head>
 <body>
 
-<!-- URL Input Bar -->
+<!-- Centered Input UI -->
 <div id="url-bar">
-    <button id="qrBtn">📷</button>
-    <input id="url" type="text" value="https://vdo.ninja/?view=">
+    <div id="row1">
+        <button id="qrBtn">📷</button>
+        <input id="url" type="text" value="https://vdo.ninja/?view=">
+    </div>
     <button id="goBtn">Enter</button>
 </div>
 
-<!-- QR Scanner Overlay -->
+<!-- QR Scanner -->
 <div id="qr-overlay">
     <video id="qr-video" autoplay playsinline></video>
     <button id="qr-cancel">Cancel</button>
 </div>
 
-<!-- Hidden canvas for QR decoding -->
 <canvas id="qr-canvas" style="display:none;"></canvas>
 
 <div id="wrap">
@@ -140,11 +146,10 @@ html, body {
     </div>
 </div>
 
-<!-- QR decoding library -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
 <script>
-/* === SCALE FUNCTION (same stretch as you liked) === */
+/* === PERFECT FILL SCALE === */
 function scaleToScreen() {
     const c = document.getElementById("video-container");
 
@@ -164,10 +169,10 @@ function scaleToScreen() {
 window.onload = scaleToScreen;
 window.onresize = scaleToScreen;
 
-/* === LOAD STREAM (manual) === */
+/* === LOAD STREAM === */
 function loadStream(url) {
     document.getElementById("video").src = url;
-    document.getElementById("url-bar").style.display = "none";
+    document.getElementById("url-bar").style.display = "none";  // Hide UI
 }
 
 document.getElementById("goBtn").onclick = () => {
@@ -179,7 +184,7 @@ document.getElementById("goBtn").onclick = () => {
     loadStream(url);
 };
 
-/* === QR SCANNER LOGIC === */
+/* === QR SCANNER === */
 const qrBtn     = document.getElementById("qrBtn");
 const qrOverlay = document.getElementById("qr-overlay");
 const qrVideo   = document.getElementById("qr-video");
@@ -209,8 +214,7 @@ function startQrScanner() {
         qrVideo.play();
         requestAnimationFrame(tickScan);
     }).catch(err => {
-        console.error(err);
-        alert("Camera access failed. Check permissions.");
+        alert("Camera permission denied or unavailable.");
     });
 }
 
@@ -221,44 +225,28 @@ function tickScan() {
         const w = qrVideo.videoWidth;
         const h = qrVideo.videoHeight;
 
-        if (w && h) {
-            qrCanvas.width = w;
-            qrCanvas.height = h;
-            const ctx = qrCanvas.getContext("2d");
-            ctx.drawImage(qrVideo, 0, 0, w, h);
+        qrCanvas.width = w;
+        qrCanvas.height = h;
+        const ctx = qrCanvas.getContext("2d");
+        ctx.drawImage(qrVideo, 0, 0, w, h);
 
-            const imageData = ctx.getImageData(0, 0, w, h);
-            const code = jsQR(imageData.data, w, h);
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const code = jsQR(imageData.data, w, h);
 
-            if (code && code.data) {
-                // Got QR code data
-                const text = code.data.trim();
-                document.getElementById("url").value = text;
-                stopQrScanner();
-                // Auto-load stream
-                if (text.startsWith("http")) {
-                    loadStream(text);
-                } else {
-                    alert("QR code is not a valid URL.");
-                }
-                return;
-            }
+        if (code && code.data) {
+            const text = code.data.trim();
+            document.getElementById("url").value = text;
+            stopQrScanner();
+            if (text.startsWith("http")) loadStream(text);
+            else alert("Invalid QR format.");
+            return;
         }
     }
     requestAnimationFrame(tickScan);
 }
 
-qrBtn.onclick = () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Camera API not supported on this device/browser.");
-        return;
-    }
-    startQrScanner();
-};
-
-qrCancel.onclick = () => {
-    stopQrScanner();
-};
+qrBtn.onclick = startQrScanner;
+qrCancel.onclick = stopQrScanner;
 </script>
 
 </body>
