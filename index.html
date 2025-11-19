@@ -12,94 +12,94 @@
 <link rel="apple-touch-icon" href="icon.png">
 
 <style>
-    body {
-        margin: 0;
-        background: black;
-        font-family: Arial;
-        height: 100vh;
-        overflow: hidden;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    height: 100%;
+    width: 100%;
+}
 
-    /* Cropped instrument area in "design pixels" */
-    #video-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 325px;
-        height: 630px;         /* taller so we can fill the screen */
-        overflow: hidden;
-        transform-origin: top left;
-        background: black;
-    }
+/* Full-screen wrapper ensuring correct scaling */
+#wrap {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: black;
+}
 
-    /* Remote stream inside, offset to show just the instrument */
-    #video {
-        position: absolute;
-        top: -155px;
-        left: -25px;
-        width: 369.5px;
-        height: 800px;
-        background: black;
-        border: none;
-    }
+/* The cropped LX area — native size BEFORE scaling */
+#video-container {
+    position: absolute;
+    width: 325px;
+    height: 515px;
+    overflow: hidden;
+    background: black;
+    transform-origin: top left;
+}
 
-    #fsBtn {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        padding: 10px 15px;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        border: 0;
-        border-radius: 8px;
-        font-size: 24px;
-        z-index: 9999;
-    }
+/* Iframe shows remote video, offset to frame the instrument correctly */
+#video {
+    position: absolute;
+    top: -155px;
+    left: -25px;
+    width: 369.5px;
+    height: 800px;
+    border: none;
+}
+
+/* Optional fullscreen button (can be removed later) */
+#fsBtn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    padding: 10px 15px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    font-size: 24px;
+    z-index: 9999;
+}
 </style>
 </head>
 <body>
 
-<div id="video-container">
-    <iframe id="video"
-            src="https://vdo.ninja/?view=Pp3zQwa"
-            allow="camera; microphone"
-            allowfullscreen></iframe>
+<div id="wrap">
+    <div id="video-container">
+        <iframe id="video"
+                src="https://vdo.ninja/?view=Pp3zQwa"
+                allow="camera; microphone"
+                allowfullscreen></iframe>
+    </div>
 </div>
 
 <button id="fsBtn">⛶</button>
 
 <script>
-// === FULLSCREEN SCALING ===
-// We treat the crop as 325x630 and scale it so its HEIGHT = screen height,
-// then center it horizontally. That removes the bottom black bar
-// without cutting off the instrument.
-
+/* EXACT scaling logic that worked for the red box */
 function scaleToScreen() {
     const c = document.getElementById("video-container");
 
     const cropW = 325;
-    const cropH = 630;
+    const cropH = 515; // LX native crop height
 
-    // Scale so height fills the full screen
     const scale = window.innerHeight / cropH;
 
-    // Center horizontally
     const scaledWidth = cropW * scale;
     const offsetX = (window.innerWidth - scaledWidth) / 2;
 
     c.style.transform = `translateX(${offsetX}px) scale(${scale})`;
 }
 
-// Apply scaling on load and on orientation / size change
-window.addEventListener("resize", scaleToScreen);
-scaleToScreen();
+window.onload = scaleToScreen;
+window.onresize = scaleToScreen;
 
-// Button just re-applies scaling (you could also hide it if you want)
-document.getElementById("fsBtn").onclick = () => {
-    scaleToScreen();
-};
+document.getElementById("fsBtn").onclick = scaleToScreen;
 
-// Register service worker (required for PWA install)
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js");
 }
