@@ -5,12 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Instrument Viewer</title>
 
-<!-- PWA ENABLE -->
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon.png">
-
 <style>
 html, body {
     margin: 0;
@@ -18,6 +12,7 @@ html, body {
     background: black;
     height: 100%;
     width: 100%;
+    overflow: hidden;
 }
 
 /* Full-screen wrapper */
@@ -31,7 +26,7 @@ html, body {
     background: black;
 }
 
-/* The cropped LX area at its "design size" */
+/* The cropped LX area */
 #video-container {
     position: absolute;
     width: 325px;
@@ -41,7 +36,7 @@ html, body {
     transform-origin: top left;
 }
 
-/* Iframe with the VDO.Ninja viewer, offset to show just the instrument */
+/* Iframe (keep your offsets) */
 #video {
     position: absolute;
     top: -155px;
@@ -49,20 +44,6 @@ html, body {
     width: 369.5px;
     height: 800px;
     border: none;
-}
-
-/* Optional button – can be removed later */
-#fsBtn {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    padding: 10px 15px;
-    background: rgba(0,0,0,0.6);
-    color: white;
-    border: 0;
-    border-radius: 8px;
-    font-size: 24px;
-    z-index: 9999;
 }
 </style>
 </head>
@@ -77,42 +58,31 @@ html, body {
     </div>
 </div>
 
-<button id="fsBtn">⛶</button>
-
 <script>
 /*
- * Scale the 325x515 crop so the WHOLE thing is visible:
- *  - compute scale for width and height
- *  - use the smaller one (no cropping)
- *  - center horizontally AND vertically
+ * NEW: Independent X and Y scaling
+ * This makes it fill FULL height AND full width
+ * without cropping anything.
  */
 function scaleToScreen() {
     const c = document.getElementById("video-container");
+
     const cropW = 325;
     const cropH = 515;
 
-    const scaleX = window.innerWidth  / cropW;
-    const scaleY = window.innerHeight / cropH;
-    const scale  = Math.min(scaleX, scaleY);   // <-- no cropping
+    const scaleX = window.innerWidth  / cropW;   // fill width
+    const scaleY = window.innerHeight / cropH;   // fill height
 
-    const scaledWidth  = cropW * scale;
-    const scaledHeight = cropH * scale;
+    // Center if needed (keeps your current layout perfect)
+    const offsetX = (window.innerWidth  - cropW * scaleX) / 2;
+    const offsetY = (window.innerHeight - cropH * scaleY) / 2;
 
-    const offsetX = (window.innerWidth  - scaledWidth)  / 2;
-    const offsetY = (window.innerHeight - scaledHeight) / 2;
-
-    c.style.transformOrigin = "top left";
-    c.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    c.style.transform =
+        `translate(${offsetX}px, ${offsetY}px) scale(${scaleX}, ${scaleY})`;
 }
 
 window.onload = scaleToScreen;
 window.onresize = scaleToScreen;
-document.getElementById("fsBtn").onclick = scaleToScreen;
-
-// PWA service worker
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js");
-}
 </script>
 
 </body>
