@@ -20,7 +20,7 @@ html, body {
     width: 100%;
 }
 
-/* Full-screen wrapper ensuring correct scaling */
+/* Full-screen wrapper */
 #wrap {
     position: fixed;
     left: 0;
@@ -31,7 +31,7 @@ html, body {
     background: black;
 }
 
-/* The cropped LX area — native size BEFORE scaling */
+/* The cropped LX area at its "design size" */
 #video-container {
     position: absolute;
     width: 325px;
@@ -41,7 +41,7 @@ html, body {
     transform-origin: top left;
 }
 
-/* Iframe shows remote video, offset to frame the instrument correctly */
+/* Iframe with the VDO.Ninja viewer, offset to show just the instrument */
 #video {
     position: absolute;
     top: -155px;
@@ -51,7 +51,7 @@ html, body {
     border: none;
 }
 
-/* Optional fullscreen button (can be removed later) */
+/* Optional button – can be removed later */
 #fsBtn {
     position: fixed;
     top: 20px;
@@ -80,26 +80,36 @@ html, body {
 <button id="fsBtn">⛶</button>
 
 <script>
-/* EXACT scaling logic that worked for the red box */
+/*
+ * Scale the 325x515 crop so the WHOLE thing is visible:
+ *  - compute scale for width and height
+ *  - use the smaller one (no cropping)
+ *  - center horizontally AND vertically
+ */
 function scaleToScreen() {
     const c = document.getElementById("video-container");
-
     const cropW = 325;
-    const cropH = 515; // LX native crop height
+    const cropH = 515;
 
-    const scale = window.innerHeight / cropH;
+    const scaleX = window.innerWidth  / cropW;
+    const scaleY = window.innerHeight / cropH;
+    const scale  = Math.min(scaleX, scaleY);   // <-- no cropping
 
-    const scaledWidth = cropW * scale;
-    const offsetX = (window.innerWidth - scaledWidth) / 2;
+    const scaledWidth  = cropW * scale;
+    const scaledHeight = cropH * scale;
 
-    c.style.transform = `translateX(${offsetX}px) scale(${scale})`;
+    const offsetX = (window.innerWidth  - scaledWidth)  / 2;
+    const offsetY = (window.innerHeight - scaledHeight) / 2;
+
+    c.style.transformOrigin = "top left";
+    c.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
 
 window.onload = scaleToScreen;
 window.onresize = scaleToScreen;
-
 document.getElementById("fsBtn").onclick = scaleToScreen;
 
+// PWA service worker
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js");
 }
