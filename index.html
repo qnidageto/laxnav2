@@ -21,14 +21,10 @@
     }
 
     #video-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 325px;      /* your exact crop size */
-        height: 515px;     /* your exact crop size */
-        overflow: hidden;
-        transform-origin: top left;
-        background: black;
+    width: 325px;
+    height: 630px; /* NEW: taller crop to fill screen properly */
+}
+
     }
 
     #video {
@@ -67,14 +63,23 @@
 <button id="fsBtn">⛶</button>
 
 <script>
-// Auto-scale crop to fill full screen in standalone mode
+// FULLSCREEN SCALING – NEW VERSION
 function scaleToScreen() {
     const c = document.getElementById("video-container");
-    const scaleX = window.innerWidth / 325;
-    const scaleY = window.innerHeight / 515;
-    const scale = Math.min(scaleX, scaleY);
-    c.style.transform = `scale(${scale})`;
+
+    const cropW = 325;
+    const cropH = 630; // updated height so we can fill full screen
+
+    // Fill the whole HEIGHT (no black bottom)
+    const scale = window.innerHeight / cropH;
+
+    // Center horizontally
+    const scaledWidth = cropW * scale;
+    const offsetX = (window.innerWidth - scaledWidth) / 2;
+
+    c.style.transform = `translateX(${offsetX}px) scale(${scale})`;
 }
+
 
 window.addEventListener("resize", scaleToScreen);
 scaleToScreen();
