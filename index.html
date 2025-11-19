@@ -20,13 +20,19 @@
         overflow: hidden;
     }
 
+    /* Cropped instrument area in "design pixels" */
     #video-container {
-    width: 325px;
-    height: 630px; /* NEW: taller crop to fill screen properly */
-}
-
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 325px;
+        height: 630px;         /* taller so we can fill the screen */
+        overflow: hidden;
+        transform-origin: top left;
+        background: black;
     }
 
+    /* Remote stream inside, offset to show just the instrument */
     #video {
         position: absolute;
         top: -155px;
@@ -34,6 +40,7 @@
         width: 369.5px;
         height: 800px;
         background: black;
+        border: none;
     }
 
     #fsBtn {
@@ -55,7 +62,6 @@
 <div id="video-container">
     <iframe id="video"
             src="https://vdo.ninja/?view=Pp3zQwa"
-            frameborder="0"
             allow="camera; microphone"
             allowfullscreen></iframe>
 </div>
@@ -63,14 +69,18 @@
 <button id="fsBtn">⛶</button>
 
 <script>
-// FULLSCREEN SCALING – NEW VERSION
+// === FULLSCREEN SCALING ===
+// We treat the crop as 325x630 and scale it so its HEIGHT = screen height,
+// then center it horizontally. That removes the bottom black bar
+// without cutting off the instrument.
+
 function scaleToScreen() {
     const c = document.getElementById("video-container");
 
     const cropW = 325;
-    const cropH = 630; // updated height so we can fill full screen
+    const cropH = 630;
 
-    // Fill the whole HEIGHT (no black bottom)
+    // Scale so height fills the full screen
     const scale = window.innerHeight / cropH;
 
     // Center horizontally
@@ -80,21 +90,13 @@ function scaleToScreen() {
     c.style.transform = `translateX(${offsetX}px) scale(${scale})`;
 }
 
-
+// Apply scaling on load and on orientation / size change
 window.addEventListener("resize", scaleToScreen);
 scaleToScreen();
 
-// Fake fullscreen (PWA mode = no Safari UI)
+// Button just re-applies scaling (you could also hide it if you want)
 document.getElementById("fsBtn").onclick = () => {
-    const c = document.getElementById("video-container");
-    if (!c.classList.contains("fs")) {
-        c.classList.add("fs");
-        scaleToScreen();
-    } else {
-        c.classList.remove("fs");
-        c.style.transform = "none";
-        scaleToScreen();
-    }
+    scaleToScreen();
 };
 
 // Register service worker (required for PWA install)
